@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Порядок выступления</title>
+<style>
+  /* Layout: одна узкая колонка — заголовок, кнопки, список выступающих; список участников берётся из ссылки (?team=A,B,C).
+     Красный только в акцентах. */
+  :root {
+    --bg: #ffffff;
+    --fg: #201a19;
+    --fg-soft: #5f5654;
+    --fg-dim: #8a7f7d;
+    --line: #e6dedc;
+    --accent: #e1271c;
+    --button-bg: #e1271c;
+    --button-fg: #ffffff;
+    --font: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171312;
+      --fg: #f3eeed;
+      --fg-soft: #b5aaa8;
+      --fg-dim: #8d8280;
+      --line: #342b2a;
+      --accent: #ff5a4d;
+      --button-bg: #ff5a4d;
+      --button-fg: #1a0605;
+      color-scheme: dark;
+    }
+  }
+
+  [hidden] { display: none !important; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 1rem;
+    line-height: 1.45;
+    padding-block: calc(2.5rem + env(safe-area-inset-top, 0px)) calc(2.5rem + env(safe-area-inset-bottom, 0px));
+    padding-inline: 16px;
+    box-sizing: border-box;
+  }
+  main {
+    max-width: 28rem;
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  header { display: flex; flex-direction: column; gap: 0.5rem; }
+  h1 {
+    font-weight: 700;
+    font-size: 1.625rem;
+    line-height: 1.2;
+    margin: 0;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+  .sub { color: var(--fg-soft); margin: 0; font-size: 0.9375rem; }
+
+  #board { display: flex; flex-direction: column; gap: 1.25rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 0.8rem 1.4rem;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+  button:active { transform: translateY(1px); }
+  .primary { background: var(--button-bg); color: var(--button-fg); font-size: 1.0625rem; }
+  .secondary { background: transparent; color: var(--fg); border-color: var(--line); }
+  .plain {
+    align-self: flex-start;
+    background: transparent;
+    color: var(--fg-soft);
+    padding: 0.25rem 0;
+    border-radius: 0.25rem;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  #status { color: var(--fg-soft); font-size: 0.875rem; min-height: 1.3em; }
+
+  .listblock { display: flex; flex-direction: column; gap: 0.5rem; }
+  ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 0.25rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 1.25rem;
+    font-weight: 600;
+    min-width: 0;
+  }
+  .n {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--fg-dim);
+    font-variant-numeric: tabular-nums;
+    flex: none;
+    width: 1.25rem;
+  }
+  .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  li.absent .name { color: var(--fg-dim); font-weight: 500; text-decoration: line-through; }
+  li input[type="checkbox"] {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  form { display: flex; flex-direction: column; gap: 1rem; }
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  label { font-weight: 600; font-size: 0.9375rem; }
+  textarea, input[type="text"] {
+    font: inherit;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    border-radius: 0.6rem;
+    padding: 0.7rem 0.8rem;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  textarea { resize: vertical; min-height: 9rem; }
+  #formError { color: var(--accent); margin: 0; font-size: 0.9375rem; min-height: 1.3em; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    li.in { animation: drop 0.28s ease-out both; animation-delay: calc(var(--i) * 45ms); }
+    @keyframes drop {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: none; }
+    }
+  }
+</style>
+
+<main>
+  <header>
+    <h1 id="title">Порядок выступления</h1>
+    <p class="sub" id="lead">Каждое нажатие задаёт новый случайный порядок.</p>
+  </header>
+
+  <noscript>
+    <p class="sub">Странице нужен JavaScript. Откройте её в браузере (Safari, Chrome).</p>
+  </noscript>
+
+  <section id="board" hidden>
+    <div class="actions">
+      <button id="shuffle" class="primary" type="button">Перемешать</button>
+      <button id="copy" class="secondary" type="button">Скопировать порядок</button>
+      <span id="status" role="status" aria-live="polite"></span>
+    </div>
+
+    <div class="listblock">
+      <p class="sub">Снимите галочку, если участника нет на встрече.</p>
+      <ol id="list" aria-label="Порядок выступления"></ol>
+    </div>
+
+    <button id="edit" class="plain" type="button">Изменить список</button>
+  </section>
+
+  <form id="setup" hidden novalidate>
+    <div class="field">
+      <label for="teams">Участники, по одному в строке</label>
+      <textarea id="teams" rows="6" placeholder="Команда А&#10;Команда Б&#10;Команда В"></textarea>
+    </div>
+    <div class="field">
+      <label for="meeting">Название встречи (необязательно)</label>
+      <input id="meeting" type="text" placeholder="Еженедельная встреча">
+    </div>
+    <p id="formError" role="alert"></p>
+    <div class="actions">
+      <button class="primary" type="submit">Создать ссылку</button>
+      <button id="cancel" class="secondary" type="button" hidden>Отмена</button>
+    </div>
+  </form>
+</main>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const TEAMS = parseTeams(params.get("team") || "");
+  const MEETING = (params.get("title") || "").trim();
+  const KEY = "speaking-order:" + TEAMS.slice().sort().join("|");
+
+  const board = document.getElementById("board");
+  const setup = document.getElementById("setup");
+  const list = document.getElementById("list");
+  const status = document.getElementById("status");
+  const lead = document.getElementById("lead");
+  const teamsInput = document.getElementById("teams");
+  const meetingInput = document.getElementById("meeting");
+  const formError = document.getElementById("formError");
+  const cancel = document.getElementById("cancel");
+
+  function parseTeams(raw) {
+    const seen = new Set();
+    return raw.split(/[,\n]/).map(s => s.trim()).filter(s => s && !seen.has(s) && seen.add(s));
+  }
+
+  function randomInt(max) {
+    // равномерное случайное число в [0, max) без смещения
+    const limit = Math.floor(0x100000000 / max) * max;
+    try {
+      const buf = new Uint32Array(1);
+      do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+      return buf[0] % max;
+    } catch (e) {
+      return Math.floor(Math.random() * max);
+    }
+  }
+
+  function shuffled(items) {
+    const a = items.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY));
+      const okOrder = Array.isArray(saved.order) && saved.order.length === TEAMS.length
+        && TEAMS.every(t => saved.order.includes(t));
+      if (okOrder) {
+        const absent = Array.isArray(saved.absent) ? saved.absent.filter(t => TEAMS.includes(t)) : [];
+        return { order: saved.order, absent };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const present = () => state.order.filter(t => !state.absent.includes(t));
+
+  function render(animate) {
+    const here = present();
+    const away = TEAMS.filter(t => state.absent.includes(t));
+    list.replaceChildren(...here.concat(away).map((team, i) => {
+      const isAway = i >= here.length;
+      const li = document.createElement("li");
+      if (isAway) li.classList.add("absent");
+      else if (animate) { li.classList.add("in"); li.style.setProperty("--i", i); }
+
+      const n = document.createElement("span");
+      n.className = "n";
+      n.textContent = isAway ? "–" : i + 1;
+
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = team;
+
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.id = "present-" + TEAMS.indexOf(team);
+      box.checked = !isAway;
+      box.setAttribute("aria-label", team + ": на встрече");
+      box.addEventListener("change", () => toggle(team, box.checked));
+
+      li.append(n, name, box);
+      return li;
+    }));
+  }
+
+  function toggle(team, isPresent) {
+    if (isPresent) {
+      state.absent = state.absent.filter(t => t !== team);
+      // вернувшийся участник выступает последним
+      state.order = state.order.filter(t => t !== team).concat(team);
+    } else if (!state.absent.includes(team)) {
+      state.absent.push(team);
+    }
+    save();
+    render(false);
+    status.textContent = "";
+  }
+
+  function showSetup() {
+    teamsInput.value = TEAMS.join("\n");
+    meetingInput.value = MEETING;
+    formError.textContent = "";
+    cancel.hidden = TEAMS.length < 2;
+    board.hidden = true;
+    setup.hidden = false;
+  }
+
+  let state = null;
+
+  if (TEAMS.length >= 2) {
+    if (MEETING) {
+      document.getElementById("title").textContent = MEETING;
+      document.title = "Порядок выступления: " + MEETING;
+      lead.textContent = "Порядок выступления. Каждое нажатие задаёт новый случайный порядок.";
+    }
+    state = load();
+    if (!state) {
+      // первое открытие: сразу случайный порядок, дальше он запоминается
+      state = { order: shuffled(TEAMS), absent: [] };
+      save();
+    }
+    render(false);
+    board.hidden = false;
+  } else {
+    lead.textContent = "Введите участников. Получится ссылка, которую можно отправить коллегам.";
+    showSetup();
+  }
+
+  document.getElementById("shuffle").addEventListener("click", () => {
+    const here = present();
+    let next = here;
+    if (here.length > 1) {
+      do { next = shuffled(here); } while (next.join("|") === here.join("|"));
+    }
+    state.order = next.concat(state.order.filter(t => state.absent.includes(t)));
+    save();
+    render(true);
+    status.textContent = "";
+  });
+
+  document.getElementById("copy").addEventListener("click", async () => {
+    const text = present().map((t, i) => `${i + 1}) ${t}`).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      status.textContent = "Скопировано";
+    } catch (e) {
+      const range = document.createRange();
+      range.selectNodeContents(list);
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      status.textContent = "Список выделен — нажмите Ctrl/Cmd+C";
+    }
+  });
+
+  document.getElementById("edit").addEventListener("click", showSetup);
+
+  cancel.addEventListener("click", () => {
+    setup.hidden = true;
+    board.hidden = false;
+  });
+
+  setup.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const teams = parseTeams(teamsInput.value);
+    if (teams.length < 2) {
+      formError.textContent = "Нужно хотя бы два участника, каждый с новой строки.";
+      teamsInput.focus();
+      return;
+    }
+    const next = new URLSearchParams();
+    next.set("team", teams.join(","));
+    const meeting = meetingInput.value.trim();
+    if (meeting) next.set("title", meeting);
+    location.assign(location.pathname + "?" + next.toString());
+  });
+</script>
